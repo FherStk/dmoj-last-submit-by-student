@@ -1,12 +1,6 @@
 import requests
 
-DAM1 = [
-    "username1",
-    "username2",
-    "..."
-]
-
-DAW1 = [
+STUDENTS = [
     "username1",
     "username2",
     "..."
@@ -53,7 +47,7 @@ if __name__ == "__main__":
     print("Requesting data for the suplied students. The output will be formated in order to copy/paste into a spreadsheet.\n")
     print("USER\tTOTAL\tLAST")
 
-    for user in DAM1:
+    for user in STUDENTS:
         data = get_submit_data_by_user(user)
         print(f"{user}\t"
               f"{data["total"]}\t"
