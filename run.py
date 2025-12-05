@@ -39,7 +39,8 @@ def db_init():
             memory REAL,
             points INTEGER,
             result TEXT,
-            contest TEXT,
+            contest_name TEXT,
+            contest_points INTEGER,
             tracking_id INTEGER,
             FOREIGN KEY(tracking_id) REFERENCES tracking(id)
         )
@@ -126,13 +127,16 @@ def create_submission(tid, submit):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
+    contest_name = None if not submit.get('contest') else submit.get('contest').get('key')
+    contest_points = None if not submit.get('contest') else submit.get('contest').get('points')
+
     cursor.execute(
     """
-           INSERT INTO submission (problem_id, problem_name, date, language, time, memory, points, result, contest, tracking_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           INSERT INTO submission (problem_id, problem_name, date, language, time, memory, points, result, contest_name, contest_points, tracking_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             submit.get('id'), submit.get('problem'), submit.get('date'), submit.get('language'), submit.get('time'),
-            submit.get('memory'), submit.get('points'), submit.get('result'), submit.get('contest'), tid,
+            submit.get('memory'), submit.get('points'), submit.get('result'), contest_name, contest_points, tid,
         )
     )
 
