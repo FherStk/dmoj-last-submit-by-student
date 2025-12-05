@@ -1,8 +1,6 @@
 import sqlite3
 
-# IMPORTANT: please, do not push this file if contains sensible data.
-#   git update-index --skip-worktree config.py
-
+# IMPORTANT: Please, do not push this file if contains sensible data, just make a copy as config.py.
 API_TOKEN = "<DMOJ ADMIN API TOKEN>"
 DB_NAME = "dmoj.db"
 STUDENTS = ["admin", "fer"]
