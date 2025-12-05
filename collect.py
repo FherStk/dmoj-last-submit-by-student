@@ -1,53 +1,7 @@
 import requests
 import sqlite3
 from datetime import datetime, timezone
-
-TOKEN_API = "<DMOJ ADMIN API TOKEN>"
-DB_NAME = "dmoj.db"
-STUDENTS = [
-    "admin", "fer"
-]
-
-def db_init():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tracking (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,            
-            date TEXT,
-            user_id INTEGER,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS submission (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,        
-            problem_id INTEGER,
-            problem_name TEXT,
-            date TEXT,
-            language TEXT,
-            time REAL,
-            memory REAL,
-            points INTEGER,
-            result TEXT,
-            contest_name TEXT,
-            contest_points INTEGER,
-            tracking_id INTEGER,
-            FOREIGN KEY(tracking_id) REFERENCES tracking(id)
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
+from config import API_TOKEN, STUDENTS, DB_NAME, db_init
 
 def get_or_create_user(user):
     conn = sqlite3.connect(DB_NAME)
@@ -143,40 +97,47 @@ def create_submission(tid, submit):
     conn.commit()
     conn.close()
 
-def get_submit_data_by_user(user):
+def api_request(user, page=0):
     url = f"https://dmoj.elpuig.xeill.net/api/v2/submissions?user={user}"
+    if page > 0: url = f"{url}&page={page}"
 
+    response = requests.get(url, headers={
+        "Authorization": f"Bearer {API_TOKEN}"
+    })
+
+    if response.status_code == 200: return response.json()
+    else: return None
+
+def get_submit_data_by_user(user):
     try:
-        response = requests.get(url, headers={
-            "Authorization": f"Bearer {TOKEN_API}"
-        })
+        content = api_request(user)
+        if content:
+            max = content.get("data", {}).get("total_pages")
 
-        if response.status_code == 200:
-            content = response.json()
+            for i in range(max):
+                content = api_request(user, i+1)
+                submits = content.get("data", {}).get("objects", [])
 
-            # TODO: if total_pages > 1, loop adding &page=x to the api query
-            submits = content.get("data", {}).get("objects", [])
+                uid = get_or_create_user(user)
+                last_tracking = get_user_last_tracking(uid)
+                tid = create_tracking(uid)
 
-            uid = get_or_create_user(user)
-            last_tracking = get_user_last_tracking(uid)
-            tid = create_tracking(uid)
+                recent = [s for s in submits if s.get('date') and s['date'] > last_tracking]
+                for submit in recent:
+                    create_submission(tid, submit)
 
-            recent = [s for s in submits if s.get('date') and s['date'] > last_tracking]
-            for submit in recent:
-                create_submission(tid, submit)
+                if not recent: return {
+                    "total": 0,
+                    "last": get_user_last_submission(uid),
+                    "error": None
+                }
 
-            if not recent: return {
-                "total": 0,
-                "last": get_user_last_submission(uid),
-                "error": None
-            }
-
-            dates = [submit['date'] for submit in recent if submit['date'] is not None]
-            return {
-                "total": len(recent),
-                "last": max(dates),
-                "error": None
-            }
+                dates = [submit['date'] for submit in recent if submit['date'] is not None]
+                return {
+                    "total": len(recent),
+                    "last": dates if len(dates) == 1 else max(dates),
+                    "error": None
+                }
 
     except requests.exceptions.RequestException as e:
         return {
