@@ -2,7 +2,7 @@ import requests
 import sqlite3
 from datetime import datetime, timezone
 
-TOKEN_API = "<DMOJ ADMIN TOKEN API>"
+TOKEN_API = "<DMOJ ADMIN API TOKEN>"
 DB_NAME = "dmoj.db"
 STUDENTS = [
     "admin", "fer"
@@ -153,6 +153,8 @@ def get_submit_data_by_user(user):
 
         if response.status_code == 200:
             content = response.json()
+
+            # TODO: if total_pages > 1, loop adding &page=x to the api query
             submits = content.get("data", {}).get("objects", [])
 
             uid = get_or_create_user(user)
