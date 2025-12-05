@@ -1,7 +1,11 @@
 import requests
 import sqlite3
+import csv
 from datetime import datetime, timezone
 from config import API_TOKEN, STUDENTS, DB_NAME, db_init
+
+NO_DATA = "   NO DATA"
+DONE = "   DONE"
 
 def get_or_create_user(user):
     conn = sqlite3.connect(DB_NAME)
@@ -126,40 +130,44 @@ def get_submit_data_by_user(user):
                 for submit in recent:
                     create_submission(tid, submit)
 
-                if not recent: return {
-                    "total": 0,
-                    "last": get_user_last_submission(uid),
-                    "error": None
-                }
+                if not recent: return [user, 0, get_user_last_submission(uid), None]
 
                 dates = [submit['date'] for submit in recent if submit['date'] is not None]
-                return {
-                    "total": len(recent),
-                    "last": dates if len(dates) == 1 else max(dates),
-                    "error": None
-                }
+                return [user, len(recent), dates if len(dates) == 1 else max(dates), None]
 
     except requests.exceptions.RequestException as e:
-        return {
-            "total": 0,
-            "last": None,
-            "error": e
-        }
+        return [user, 0, None, e]
+
+def export_csv(data, filename):
+    if not data:
+        print(NO_DATA)
+        return
+
+    with open(filename, mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["USER", "NEW SUBMISSIONS SINCE LAST COLLECTION", "LAST SUBMISSION", "ERROR MESSAGE"])
+
+    with open(filename, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        for line in data:
+            writer.writerow(line)
+
+    print(DONE)
 
 if __name__ == "__main__":
     db_init()
 
     print("Requesting data for the suplied students.")
     print("  - All data will be stored into a SQLite BBDD.")
-    print("  - The most recent data will de displayed and formatted to copy/paste it into a spreadsheet.\n")
-    print("USER\tNEW SUBMISSIONS\tLAST SUBMISSION")
+    print("  - A CSV file will be created into the current folder, containing the amount of submissions (and the last submission date) by user since the last collect.\n")
 
-    for user in STUDENTS:
-        data = get_submit_data_by_user(user)
-        print(f"{user}\t"
-              f"{data["total"]}\t"
-              f"{"Never" if data["last"] is None else data["last"][:19].replace("T", " ")}"
-              f"{"\t" if data["error"] is not None else ""}"
-              f"{data["error"] if data["error"] is not None else ""}")
+    data = []
+    print("[1/2]: Collecting data from the DMOJ and storing into the BBDD.")
+    print(f"   ", end="")
+    for i, user in enumerate(STUDENTS):
+        print(".", end="")
+        data.append(get_submit_data_by_user(user))
+    print(DONE.lstrip()) if len(data) > 1 else print(NO_DATA.lstrip())
 
-    print("\nDONE")
+    print("\n[2/2]: Creating the CSV file.")
+    export_csv(data, f"collect-{datetime.today().strftime("%Y-%m-%d")}.csv")

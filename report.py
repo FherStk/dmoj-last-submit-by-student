@@ -105,10 +105,10 @@ if __name__ == "__main__":
 
     print("Generating report for the suplied students.")
     print("  - All data will be loaded from a SQLite BBDD.")
-    print("  - A CSV file will be created into the current folder.\n")
+    print("  - A CSV file will be created into the current folder, containing the amount of submissions by user every day.\n")
 
     print("[1/2]: Collecting data from the BBDD.")
     data = collect_data()
 
     print("\n[2/2]: Creating the CSV file.")
-    export_csv(data, f"{datetime.today().strftime("%Y-%m-%d")}.csv")
+    export_csv(data, f"report-{datetime.today().strftime("%Y-%m-%d")}.csv")
