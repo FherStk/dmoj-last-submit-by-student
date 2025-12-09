@@ -116,10 +116,10 @@ def get_submit_data_by_user(user):
     try:
         content = api_request(user)
         if content:
-            max = content.get("data", {}).get("total_pages")
+            total_pages = content.get("data", {}).get("total_pages")
 
-            for i in range(max):
-                content = api_request(user, i+1)
+            for current_page in range(total_pages):
+                content = api_request(user, current_page+1)
                 submits = content.get("data", {}).get("objects", [])
 
                 uid = get_or_create_user(user)
